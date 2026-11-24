@@ -1,6 +1,7 @@
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket } from 'ws';
+import { accessEvents, accessStatus } from './access.ts';
 import { callStore, type CallState, type ChannelState } from './callStore.ts';
 import { ingest } from './ingest.ts';
 import { encodeAudioFrame } from './pcm.ts';
@@ -10,10 +11,12 @@ import type { ClientCommand, ServerEvent } from '../shared/protocol.ts';
 const CALLS_THROTTLE_MS = 250;
 const LEVELS_INTERVAL_MS = 100;
 const MAX_BUFFERED = 1024 * 1024; // drop audio for slow browsers instead of growing memory
+const PING_INTERVAL_MS = 25_000;
 
 interface Client {
   ws: WebSocket;
   listen: Set<string>;
+  alive: boolean;
 }
 
 /** WebSocket endpoint for the browser dashboard. */
@@ -30,7 +33,20 @@ class DashboardHub {
     ingest.on('status', (pbx) => this.broadcast({ type: 'pbx', pbx }));
     ingest.on('inspector', (message) => this.broadcast({ type: 'inspector', message }));
     sttManager.on('status', (stt) => this.broadcast({ type: 'stt', stt }));
+    accessEvents.on('status', (access) => this.broadcast({ type: 'access', access }));
     setInterval(() => this.sendLevels(), LEVELS_INTERVAL_MS).unref();
+    // Keep idle connections alive through proxies/Cloudflare, and drop dead ones.
+    setInterval(() => {
+      for (const c of this.clients) {
+        if (!c.alive) {
+          c.ws.terminate();
+          this.clients.delete(c);
+          continue;
+        }
+        c.alive = false;
+        c.ws.ping();
+      }
+    }, PING_INTERVAL_MS).unref();
   }
 
   handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
@@ -38,14 +54,16 @@ class DashboardHub {
   }
 
   private onConnection(ws: WebSocket) {
-    const client: Client = { ws, listen: new Set() };
+    const client: Client = { ws, listen: new Set(), alive: true };
     this.clients.add(client);
+    ws.on('pong', () => (client.alive = true));
     this.send(client, {
       type: 'hello',
       calls: callStore.list(),
       transcripts: callStore.allTranscripts(),
       pbx: ingest.status(),
       stt: sttManager.status(),
+      access: accessStatus(),
     });
     ws.on('message', (data) => {
       let cmd: ClientCommand;

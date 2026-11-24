@@ -1,0 +1,48 @@
+# Yeastar Audio Monitor — see deploy/README-ubuntu.md
+#
+#   LAN browser  → caddy :80 (login) → app :8080
+#   Cloudflare Quick Tunnel (cloudflared inside app, switched on from the web UI) → caddy :81 (login) → app :8080
+#   Yeastar PBX  → app :8081 directly (PBX audio WebSockets only; no dashboard, no API on this port)
+#
+# The dashboard port of the app is not published: it is reachable only through Caddy.
+
+name: yeastar-monitor
+
+services:
+  app:
+    build: .
+    image: yeastar-audio-monitor:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8080"
+      INGEST_PORT: "8081"
+      PUBLIC_PORT: ${PBX_PORT:-8080}
+      TRUST_PROXY: "1"
+      TUNNEL_TARGET: http://caddy:81
+      DATA_DIR: /app/data
+    ports:
+      - "${PBX_PORT:-8080}:8081"
+    volumes:
+      - ./data:/app/data
+    stop_grace_period: 15s
+
+  caddy:
+    image: caddy:2.11.7
+    restart: unless-stopped
+    environment:
+      DASH_USER: ${DASH_USER:?Set DASH_USER in .env}
+      DASH_PASS_HASH: ${DASH_PASS_HASH:?Set DASH_PASS_HASH in .env - run deploy/set-password.sh}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

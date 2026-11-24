@@ -101,9 +101,35 @@ export interface InspectorMessage {
   raw: string;
 }
 
+export type TunnelState = 'unavailable' | 'stopped' | 'starting' | 'online' | 'error';
+
+export interface AccessStatus {
+  tunnel: {
+    /** false when not running behind our proxy (no TUNNEL_TARGET), e.g. `npm run dev`. */
+    available: boolean;
+    enabled: boolean;
+    state: TunnelState;
+    url?: string;
+    error?: string;
+    since?: number;
+    log: string[];
+  };
+  /** Setting: allow the dashboard from the LAN. */
+  lanDashboard: boolean;
+  /** What actually applies (setting, unless the tunnel is down or FORCE_LAN_DASHBOARD is set). */
+  lanEffective: boolean;
+  forceLan: boolean;
+}
+
+export interface AccessUpdate {
+  tunnelEnabled: boolean;
+  lanDashboard: boolean;
+}
+
 /** Server → browser (JSON text frames). Audio goes as binary frames, see encodeAudioFrame. */
 export type ServerEvent =
-  | { type: 'hello'; calls: CallSummary[]; transcripts: TranscriptEntry[]; pbx: PbxStatus; stt: SttGlobalStatus }
+  | { type: 'hello'; calls: CallSummary[]; transcripts: TranscriptEntry[]; pbx: PbxStatus; stt: SttGlobalStatus; access: AccessStatus }
+  | { type: 'access'; access: AccessStatus }
   | { type: 'calls'; calls: CallSummary[] }
   | { type: 'levels'; levels: Record<string, number> }
   | { type: 'transcript'; entry: TranscriptEntry }

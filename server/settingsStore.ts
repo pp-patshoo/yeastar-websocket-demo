@@ -50,9 +50,14 @@ export const AiSettingsUpdateSchema = AiSettingsSchema.omit({ apiKey: true }).ex
   clearApiKey: z.boolean().optional(),
 });
 
-const FileSchema = z.object({ pbxList: z.array(ProfileSchema), ai: AiSettingsSchema });
+const AccessSchema = z.object({ tunnelEnabled: z.boolean(), lanDashboard: z.boolean() });
+export const AccessUpdateSchema = AccessSchema;
+const DEFAULT_ACCESS = { tunnelEnabled: false, lanDashboard: true };
+
+const FileSchema = z.object({ pbxList: z.array(ProfileSchema), ai: AiSettingsSchema, access: AccessSchema });
 
 export type AiSettings = z.infer<typeof AiSettingsSchema>;
+export type AccessSettings = z.infer<typeof AccessSchema>;
 type SettingsFile = z.infer<typeof FileSchema>;
 
 const filePath = path.join(config.dataDir, 'settings.json');
@@ -108,12 +113,25 @@ class SettingsStore extends EventEmitter {
     const defaults: SettingsFile = {
       pbxList: [defaultProfile('pbx-1', 'PBX 1', { ...d.pbx, authValue: d.pbx.authValue || randomSecret() })],
       ai: { ...d.ai },
+      access: { ...DEFAULT_ACCESS },
     };
     let raw: any;
     try {
       raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') console.warn('[settings] cannot read settings.json:', err);
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('[settings] cannot read settings.json:', err);
+        return defaults;
+      }
+      // First run: persist the defaults right away, otherwise the generated PBX secret
+      // would change on every restart and a configured PBX could no longer connect.
+      this.data = defaults;
+      try {
+        this.save();
+        console.log(`[settings] created ${filePath}`);
+      } catch (e) {
+        console.warn('[settings] cannot write settings.json:', (e as Error).message);
+      }
       return defaults;
     }
     // Migrate the single-PBX format ({ pbx: {...} }) to a list.
@@ -123,7 +141,7 @@ class SettingsStore extends EventEmitter {
       console.log('[settings] migrated single PBX settings to "PBX 1"');
     }
     pbxList = pbxList.map((p: any) => ({ ...defaultProfile(p.id ?? 'pbx', p.name ?? 'PBX'), ...p }));
-    const parsed = FileSchema.safeParse({ pbxList, ai: { ...defaults.ai, ...raw.ai } });
+    const parsed = FileSchema.safeParse({ pbxList, ai: { ...defaults.ai, ...raw.ai }, access: { ...DEFAULT_ACCESS, ...raw.access } });
     if (parsed.success) {
       this.data = parsed.data;
       if (!Array.isArray(raw.pbxList)) this.save();
@@ -198,6 +216,18 @@ class SettingsStore extends EventEmitter {
     this.data = { ...this.data, pbxList: this.data.pbxList.filter((p) => p.id !== id) };
     this.save();
     this.emit('change', 'pbx', id, 'deleted', before);
+  }
+
+  // ---- Access (tunnel / LAN dashboard) ----
+
+  get access(): AccessSettings {
+    return this.data.access;
+  }
+
+  updateAccess(next: AccessSettings) {
+    this.data = { ...this.data, access: AccessSchema.parse(next) };
+    this.save();
+    this.emit('change', 'access');
   }
 
   // ---- AI ----

@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './layout/AppShell';
+import { AccessPage } from './pages/AccessPage';
 import { AiSettingsPage } from './pages/AiSettingsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PbxEditPage } from './pages/PbxEditPage';
@@ -14,6 +15,7 @@ export function App() {
           <Route path="settings/ai" element={<AiSettingsPage />} />
           <Route path="settings/pbx" element={<PbxListPage />} />
           <Route path="settings/pbx/:id" element={<PbxEditPage />} />
+          <Route path="settings/access" element={<AccessPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -3,8 +3,26 @@ import path from 'node:path';
 
 const bool = (v: string | undefined, d: boolean) => (v === undefined || v === '' ? d : /^(1|true|yes|on)$/i.test(v));
 
+const port = Number(process.env.PORT ?? 8080);
+
 export const config = {
-  port: Number(process.env.PORT ?? 8080),
+  port,
+  /**
+   * Extra port that accepts only PBX audio WebSockets (no dashboard, no API, no proxy in between).
+   * Docker publishes this one directly, because a proxy would drop headers like "auth_key".
+   */
+  ingestPort: Number(process.env.INGEST_PORT || 0),
+  /** Address of this app as the PBX dials it (e.g. the VM's LAN IP). Empty = detect per PBX. */
+  publicHost: (process.env.PUBLIC_HOST ?? '').trim(),
+  /** Port the PBX dials (as published by Docker); defaults to PORT. */
+  publicPort: Number(process.env.PUBLIC_PORT || port),
+  /** Running behind our Caddy proxy: trust X-Forwarded-For and X-Via-Tunnel. */
+  trustProxy: bool(process.env.TRUST_PROXY, false),
+  /** Where cloudflared should send tunnel traffic (Caddy's login-protected tunnel port). Empty = tunnel unavailable. */
+  tunnelTarget: (process.env.TUNNEL_TARGET ?? '').trim(),
+  cloudflaredBin: process.env.CLOUDFLARED_BIN || 'cloudflared',
+  /** Recovery switch: always allow the dashboard from the LAN. */
+  forceLanDashboard: bool(process.env.FORCE_LAN_DASHBOARD, false),
   dataDir: path.resolve(process.env.DATA_DIR ?? 'data'),
   webDist: path.resolve('web/dist'),
   ingestPath: '/yeastar',

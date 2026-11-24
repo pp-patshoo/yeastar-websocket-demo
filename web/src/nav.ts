@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from 'react';
-import { IconDashboard, IconPbx, IconSparkle } from './components/Icons';
+import { IconDashboard, IconGlobe, IconPbx, IconSparkle } from './components/Icons';
 import type { LiveState } from './hooks/useLive';
 
 export interface NavItem {
@@ -53,6 +53,25 @@ export const NAV: NavItem[] = [
       if (on.length && connected === on.length && !problem) return { tone: 'ok', title: 'PBX ทุกตัวเชื่อมต่ออยู่' };
       if (problem) return { tone: 'warn', title: 'มี PBX ที่ถูกปฏิเสธหรือ API ผิดพลาด' };
       return connected ? { tone: 'ok', title: `${connected}/${on.length} PBX เชื่อมต่ออยู่` } : { tone: 'off', title: 'ยังไม่มี PBX เชื่อมต่อ' };
+    },
+  },
+  {
+    to: '/settings/access',
+    label: 'การเข้าถึง',
+    hint: 'LAN / Cloudflare Tunnel',
+    icon: IconGlobe,
+    hintFor: (s) => {
+      const t = s.access.tunnel;
+      if (!t.available) return 'LAN เท่านั้น';
+      const lan = s.access.lanEffective ? 'LAN' : '';
+      const tun = t.state === 'online' ? 'Tunnel' : '';
+      return [lan, tun].filter(Boolean).join(' + ') || 'LAN';
+    },
+    status: (s) => {
+      const t = s.access.tunnel;
+      if (t.state === 'online') return { tone: 'ok', title: 'Cloudflare Tunnel ออนไลน์' };
+      if (t.state === 'error' || t.state === 'starting') return { tone: 'warn', title: t.state === 'error' ? 'Tunnel ผิดพลาด' : 'Tunnel กำลังเปิด' };
+      return { tone: 'off', title: 'Tunnel ปิดอยู่' };
     },
   },
 ];

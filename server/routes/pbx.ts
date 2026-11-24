@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { ingestUrlFor, lanInterfaces } from '../network.ts';
+import { hostChoices, ingestUrlFor } from '../network.ts';
 import { maskSecret, settings, ValidationError, ProfileUpdateSchema } from '../settingsStore.ts';
 import { apiRegistry, testApi, YeastarApiError } from '../yeastarApi.ts';
 import {
@@ -35,7 +35,7 @@ export function profileView(p: PbxProfile): PbxProfileView {
         }
       : null,
     ingestUrl: ingestUrlFor(p),
-    hostChoices: lanInterfaces().map((i) => i.address),
+    hostChoices: hostChoices(),
   };
 }
 

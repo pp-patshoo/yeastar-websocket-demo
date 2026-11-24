@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
+import { clientIp } from './access.ts';
 import { callStore } from './callStore.ts';
 import { config } from './config.ts';
 import { decodeAudio } from './pcm.ts';
@@ -65,8 +66,9 @@ class Ingest extends EventEmitter {
     };
   }
 
-  handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
-    const remoteAddress = normalizeIp(req.socket.remoteAddress ?? '');
+  /** `direct`: request reached us without our proxy, so X-Forwarded-For must not be trusted. */
+  handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer, direct = false) {
+    const remoteAddress = direct ? normalizeIp(req.socket.remoteAddress ?? '') : clientIp(req);
     const path = req.url ?? '/';
     const { profile, ok, reason } = identify(req, remoteAddress);
     const attempt: PbxAttemptInfo = { at: Date.now(), remoteAddress, path, accepted: ok, reason, headers: maskHeaders(req, profile) };

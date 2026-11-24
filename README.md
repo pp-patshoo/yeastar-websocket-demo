@@ -14,7 +14,12 @@ Yeastar PBX (หลายเครื่อง) ──ws──▶ /yeastar/<pbxI
    YeastarApiClient                             SttManager ──wss──▶ Deepgram
 ```
 
-## ติดตั้งและรัน
+## ติดตั้งบน Linux server ด้วย Docker
+
+ดู **[deploy/README-ubuntu.md](deploy/README-ubuntu.md)** (Ubuntu 24.04 + docker compose + Caddy login + Cloudflare Quick Tunnel)
+เมนู **การเข้าถึง** ในหน้าเว็บใช้เปิด/ปิด Cloudflare Tunnel และการเข้าผ่าน LAN ได้ (ใช้ได้เมื่อรันด้วย Docker)
+
+## ติดตั้งและรันบนเครื่องสำหรับพัฒนา
 
 ต้องมี Node.js 20 ขึ้นไป
 

@@ -58,6 +58,12 @@ export const IconMenu = (p: P) => (
     <path d="M4 6h16M4 12h16M4 18h16" />
   </svg>
 );
+export const IconGlobe = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" />
+  </svg>
+);
 export const IconPhone = (p: P) => (
   <svg {...base(p)}>
     <path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2" />

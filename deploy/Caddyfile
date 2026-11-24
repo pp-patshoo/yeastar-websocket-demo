@@ -1,0 +1,28 @@
+# Caddy in front of the dashboard (see docker-compose.yml).
+# PBX audio does NOT go through Caddy: the app's PBX-only port is published directly, because a
+# proxy drops request headers whose names contain "_" (such as Yeastar's default "auth_key").
+# No trusted_proxies: Caddy ignores X-Forwarded-For sent by clients and sets the real peer IP.
+{
+	admin off
+	auto_https off
+}
+
+(login) {
+	basic_auth {
+		{$DASH_USER} {$DASH_PASS_HASH}
+	}
+}
+
+# Dashboard from the LAN — the app trusts X-Via-Tunnel (TRUST_PROXY=1), so clients may never send it.
+:80 {
+	import login
+	request_header -X-Via-Tunnel
+	reverse_proxy app:8080
+}
+
+# Dashboard through the Cloudflare Quick Tunnel (not published; cloudflared in the app container connects here)
+:81 {
+	import login
+	request_header X-Via-Tunnel 1
+	reverse_proxy app:8080
+}

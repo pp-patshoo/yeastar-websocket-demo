@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { LivePlayer } from '../audio/player';
 import {
   decodeAudioFrame,
+  type AccessStatus,
   type CallSummary,
   type ClientCommand,
   type InspectorMessage,
@@ -24,6 +25,7 @@ export interface LiveState {
   stt: SttGlobalStatus;
   inspector: InspectorMessage[];
   listening: string[];
+  access: AccessStatus;
 }
 
 const initial: LiveState = {
@@ -36,6 +38,12 @@ const initial: LiveState = {
   stt: { enabled: false, configured: false, provider: 'deepgram', activeStreams: 0 },
   inspector: [],
   listening: [],
+  access: {
+    tunnel: { available: false, enabled: false, state: 'unavailable', log: [] },
+    lanDashboard: true,
+    lanEffective: true,
+    forceLan: false,
+  },
 };
 
 /** Single WebSocket to the server shared by every page, with auto-reconnect. */
@@ -91,7 +99,7 @@ class LiveStore {
       case 'hello': {
         const transcripts: Record<string, TranscriptEntry[]> = {};
         for (const t of ev.transcripts) (transcripts[t.callKey] ??= []).push(t);
-        return this.set({ calls: ev.calls, transcripts, pbx: ev.pbx, stt: ev.stt });
+        return this.set({ calls: ev.calls, transcripts, pbx: ev.pbx, stt: ev.stt, access: ev.access });
       }
       case 'calls': {
         // Stop listening to channels that ended or were dropped.
@@ -121,6 +129,8 @@ class LiveStore {
         return this.set({ pbx: ev.pbx });
       case 'stt':
         return this.set({ stt: ev.stt });
+      case 'access':
+        return this.set({ access: ev.access });
       case 'inspector':
         return this.set({ inspector: [ev.message, ...this.state.inspector].slice(0, MAX_INSPECTOR) });
     }

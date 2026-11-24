@@ -36,9 +36,11 @@ function pbxAddress(p: PbxProfile): string | undefined {
   return p.allowedIps[0];
 }
 
-/** Address of this app as the PBX should dial it. */
+/** Address of this app as the PBX should dial it: profile setting → PUBLIC_HOST → detect. */
 export function appHostFor(p: PbxProfile): string {
   if (p.appHost) return p.appHost;
+  // Inside Docker, detection would only find the container's internal IP.
+  if (config.publicHost) return config.publicHost;
   const ifaces = lanInterfaces();
   const target = pbxAddress(p);
   if (target === 'localhost' || target === '127.0.0.1') return '127.0.0.1';
@@ -46,6 +48,13 @@ export function appHostFor(p: PbxProfile): string {
 }
 
 export function ingestUrlFor(p: PbxProfile): string {
-  const host = net.isIPv6(p.appHost) ? `[${p.appHost}]` : appHostFor(p);
-  return `ws://${host}:${config.port}${config.ingestPath}/${p.id}`;
+  const h = appHostFor(p);
+  const host = net.isIPv6(h) ? `[${h}]` : h;
+  return `ws://${host}:${config.publicPort}${config.ingestPath}/${p.id}`;
+}
+
+/** Choices for the "app address" dropdown: PUBLIC_HOST first, then detected interfaces. */
+export function hostChoices(): string[] {
+  const ips = lanInterfaces().map((i) => i.address);
+  return config.publicHost && !ips.includes(config.publicHost) ? [config.publicHost, ...ips] : ips;
 }

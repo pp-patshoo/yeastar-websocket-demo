@@ -1,4 +1,6 @@
 import type {
+  AccessStatus,
+  AccessUpdate,
   AiSettingsUpdate,
   AiSettingsView,
   PbxApiConfig,
@@ -23,7 +25,12 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 type ApiForm = Omit<PbxApiConfig, 'clientSecret'> & { clientSecret?: string };
 const enc = encodeURIComponent;
 
+export type AccessView = AccessStatus & { viewerViaTunnel: boolean; note?: string };
+
 export const api = {
+  getAccess: () => request<AccessView>('GET', '/api/access'),
+  saveAccess: (u: AccessUpdate) => request<AccessView>('PUT', '/api/access', u),
+
   getAi: () => request<AiSettingsView>('GET', '/api/settings/ai'),
   saveAi: (s: AiSettingsUpdate) => request<AiSettingsView>('PUT', '/api/settings/ai', s),
   testAi: (s: Partial<AiSettingsUpdate>) => request<{ ok: boolean; message: string }>('POST', '/api/settings/ai/test', s),
